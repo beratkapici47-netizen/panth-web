@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="tr" class="dark h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panth Network | En İyi Minecraft Sunucusu</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome 6 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Outfit:wght@600;700;800;900&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'sans-serif'],
+                        heading: ['Outfit', 'sans-serif']
+                    },
+                    colors: {
+                        darkBg: '#090514',
+                        panelBg: 'rgba(23, 15, 38, 0.8)',
+                        cardBg: 'rgba(38, 24, 61, 0.55)',
+                        accentPurple: '#a855f7',
+                        accentPink: '#ec4899',
+                        accentCyan: '#06b6d4'
+                    },
+                    boxShadow: {
+                        'neon-purple': '0 0 30px rgba(168, 85, 247, 0.3)',
+                        'neon-pink': '0 0 30px rgba(236, 72, 153, 0.3)',
+                        'rose': '0 0 30px rgba(244, 63, 94, 0.25)'
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #090514;
+            color: #f8fafc;
+            overflow-x: hidden;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        #bgCanvas {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .glass-panel {
+            background: rgba(23, 15, 38, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+        }
+
+        .glass-card {
+            background: rgba(38, 24, 61, 0.5);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.07);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .glass-card:hover {
+            border-color: rgba(168, 85, 247, 0.5);
+            transform: translateY(-4px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.5), 0 0 25px rgba(168, 85, 247, 0.2);
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, #c084fc 0%, #a855f7 50%, #f43f5e 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        #toast {
+            transform: translateY(120px);
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            z-index: 99999;
+        }
+        #toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #090514; }
+        ::-webkit-scrollbar-thumb { background: #2e1065; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #a855f7; }
+
+        .sidebar-link.active {
+            background: linear-gradient(90deg, rgba(168, 85, 247, 0.2) 0%, rgba(168, 85, 247, 0.0) 100%);
+            border-left: 4px solid #a855f7;
+            color: #c084fc;
+        }
+
+        .store-tab.active {
+            background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
+            color: #ffffff;
+            box-shadow: 0 0 20px rgba(168, 85, 247, 0.4);
+        }
+    </style>
+</head>
+<body class="relative min-h-screen flex selection:bg-purple-500 selection:text-white">
+
+    <!-- IP BAN EKRANI -->
+    <div id="bannedScreen" class="fixed inset-0 bg-slate-950 z-[99999] hidden flex-col items-center justify-center text-center p-6">
+        <div class="w-24 h-24 rounded-3xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-500 text-5xl mb-6 shadow-rose">
+            <i class="fa-solid fa-ban"></i>
+        </div>
+        <h1 class="text-3xl font-black font-heading text-white mb-2">Erişiminiz Engellendi (IP BAN)</h1>
+        <p class="text-slate-400 text-sm max-w-md mb-6 leading-relaxed">
+            Panth Network güvenlik kurallarını ihlal ettiğiniz için IP adresiniz kalıcı olarak yasaklanmıştır.
+        </p>
+        <button onclick="unbanAllIPs()" class="px-6 py-3 rounded-2xl bg-emerald-500 text-slate-950 font-black text-xs hover:bg-emerald-400 transition-all shadow-lg">
+            <i class="fa-solid fa-unlock"></i> BANIMI KALDIR (YETKİLİ SIFIRLAMA)
+        </button>
+    </div>
+
+    <canvas id="bgCanvas"></canvas>
+
+    <!-- TOAST BİLDİRİMİ -->
+    <div id="toast" class="fixed bottom-6 right-6 glass-panel px-5 py-3.5 rounded-2xl border border-purple-500/30 text-sm font-bold shadow-2xl flex items-center gap-3">
+        <div class="w-8 h-8 rounded-xl bg-purple-500/20 flex items-center justify-center text-purple-400">
+            <i id="toastIcon" class="fa-solid fa-circle-check text-base"></i>
+        </div>
+        <span id="toastMsg" class="text-slate-200">İşlem başarılı!</span>
+    </div>
+
+    <!-- SIDEBAR -->
+    <aside id="sidebarNav" class="fixed top-0 left-0 bottom-0 w-72 z-40 glass-panel border-r border-purple-900/30 flex flex-col transition-transform duration-300 -translate-x-full lg:translate-x-0">
+        <!-- LOGO -->
+        <div class="h-24 px-6 flex items-center justify-between border-b border-purple-900/30 cursor-pointer" onclick="switchTab('home')">
+            <div class="flex items-center gap-3.5">
+                <div class="relative w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-600 to-pink-500 p-0.5 shadow-neon-purple">
+                    <div class="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center">
+                        <i class="fa-solid fa-cubes text-xl text-purple-400"></i>
+                    </div>
+                </div>
+                <div class="flex flex-col">
+                    <span class="font-heading font-black text-xl tracking-wider text-white">PANTH<span class="gradient-text">NET</span></span>
+                    <span class="text-[10px] uppercase font-bold tracking-widest text-purple-400">BoxPvP WebOS</span>
+                </div>
+            </div>
+            <button onclick="toggleSidebar()" class="lg:hidden text-slate-400 hover:text-white">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+        </div>
+
+        <!-- NAV LINKS -->
+        <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
+            <div class="text-[10px] uppercase font-extrabold tracking-wider text-purple-400/60 px-3 mb-2">Menü</div>
+            <button onclick="switchTab('home')" id="nav-home" class="sidebar-link active w-full flex items-center gap-3.5 px-4 py-3.5 rounded-2xl font-semibold text-sm text-slate-300 hover:text-purple-300 hover:bg-purple-900/20 transition-all">
+                <i class="fa-solid fa-house text-lg w-5 text-center text-purple-400"></i>
+                <span>Anasayfa</span>
+            </button>
+            <button onclick="switchTab('store')" id="nav-store" class="sidebar-link w-full flex items-center gap-3.5 px-4 py-3.5 rounded-2xl font-semibold text-sm text-slate-300 hover:text-purple-300 hover:bg-purple-900/20 transition-all">
+                <i class="fa-solid fa-store text-lg w-5 text-center text-pink-400"></i>
+                <span>Mağaza / Market</span>
+            </button>
+            <button onclick="switchTab('updates')" id="nav-updates" class="sidebar-link w-full flex items-center gap-3.5 px-4 py-3.5 rounded-2xl font-semibold text-sm text-slate-300 hover:text-purple-300 hover:bg-purple-900/20 transition-all">
+                <i class="fa-solid fa-newspaper text-lg w-5 text-center text-cyan-400"></i>
+                <span>Güncellemeler</span>
+            </button>
+            <button onclick="switchTab('support')" id="nav-support" class="sidebar-link w-full flex items-center gap-3.5 px-4 py-3.5 rounded-2xl font-semibold text-sm text-slate-300 hover:text-purple-300 hover:bg-purple-900/20 transition-all">
+                <i class="fa-solid fa-headset text-lg w-5 text-center text-emerald-400"></i>
+                <span>Destek Talebi</span>
+            </button>
+            <button onclick="switchTab('about')" id="nav-about" class="sidebar-link w-full flex items-center gap-3.5 px-4 py-3.5 rounded-2xl font-semibold text-sm text-slate-300 hover:text-purple-300 hover:bg-purple-900/20 transition-all">
+                <i class="fa-solid fa-circle-info text-lg w-5 text-center text-rose-400"></i>
+                <span>Hakkımızda</span>
+            </button>
+
+            <!-- YÖNETİM PANELİ -->
+            <div id="adminNavWrapper" class="hidden pt-6 mt-6 border-t border-purple-900/30">
+                <div class="px-3 text-[10px] uppercase font-extrabold tracking-wider text-rose-400 mb-2">Yönetim Alanı</div>
+                <button onclick="switchTab('admin')" id="nav-admin" class="sidebar-link w-full flex items-center gap-3.5 px-4 py-3.5 rounded-2xl font-semibold text-sm text-rose-400 bg-rose-500/10 border border-rose-500/30 hover:bg-rose-500/20 transition-all">
+                    <i class="fa-solid fa-shield-halved text-lg w-5 text-center text-rose-400"></i>
+                    <span>Yetkili Paneli</span>
+                </button>
+            </div>
+        </nav>
+
+        <!-- SERVER STATUS FOOTER -->
+        <div class="p-4 border-t border-purple-900/30 m-4 rounded-2xl glass-card flex items-center gap-3">
+            <div class="relative flex h-3 w-3">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+            </div>
+            <div class="flex flex-col">
+                <span class="text-[10px] text-slate-400 font-bold uppercase">Sunucu Durumu</span>
+                <span class="text-xs font-extrabold text-emerald-400">Aktif (184 / 500)</span>
+            </div>
+        </div>
+    </aside>
+
+    <div class="flex-1 min-w-0 flex flex-col min-h-screen lg:ml-72 relative z-10">
+
+        <!-- HEADER -->
+        <header class="sticky top-0 z-30 glass-panel border-b border-purple-900/30 h-24 px-6 sm:px-10 flex items-center justify-between gap-4">
+            <div class="flex items-center gap-4">
+                <button onclick="toggleSidebar()" class="lg:hidden p-2.5 rounded-xl bg-purple-950 text-slate-300 hover:text-purple-400">
+                    <i class="fa-solid fa-bars text-xl"></i>
+                </button>
+
+                <div onclick="copyServerIP()" class="cursor-pointer glass-card px-4.5 py-2.5 rounded-2xl border border-purple-500/30 flex items-center gap-3.5 hover:border-purple-400 transition-all group">
+                    <div class="w-9 h-9 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-400 group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-server text-sm"></i>
+                    </div>
+                    <div class="flex flex-col text-left">
+                        <div class="text-[10px] uppercase text-slate-400 font-extrabold tracking-wider leading-none">SUNUCU IP</div>
+                        <div class="text-xs font-extrabold font-mono text-white group-hover:text-purple-300 transition-colors mt-0.5">oyna.panthnetwork.com.tr</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- USER AREA -->
+            <div class="flex items-center gap-3.5" id="userHeaderArea">
+                <button onclick="openModal('loginModal')" class="px-5 py-2.5 rounded-xl bg-purple-950/80 hover:bg-purple-900/80 text-white font-bold text-xs border border-purple-800/50 transition-all flex items-center gap-2">
+                    <i class="fa-solid fa-right-to-bracket text-purple-400"></i> Giriş Yap
+                </button>
+                <button onclick="openModal('registerModal')" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-extrabold text-xs transition-all shadow-neon-purple flex items-center gap-2">
+                    <i class="fa-solid fa-user-plus"></i> Kayıt Ol
+                </button>
+            </div>
+        </header>
+
+        <!-- MAIN VIEW PORT -->
+        <main class="flex-1 p-6 sm:p-10 max-w-7xl w-full mx-auto space-y-8">
+
+            <!-- TAB 1: ANASAYFA -->
+            <div id="tab-home" class="tab-content space-y-8">
+                <div class="relative rounded-3xl overflow-hidden glass-panel border border-purple-500/20 p-8 sm:p-12">
+                    <div class="absolute -right-20 -bottom-20 w-80 h-80 bg-purple-600/15 rounded-full blur-3xl pointer-events-none"></div>
+                    <div class="relative z-10 max-w-2xl space-y-4">
+                        <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-purple-500/10 border border-purple-500/30 text-xs font-bold text-purple-300">
+                            <i class="fa-solid fa-bolt text-pink-400"></i> SEZON 4 SEZONU AÇILDI
+                        </div>
+                        <h1 class="text-3xl sm:text-5xl font-black font-heading text-white tracking-tight">
+                            PANTH <span class="gradient-text">NETWORK</span> BOXPVP
+                        </h1>
+                        <p class="text-slate-300 text-sm sm:text-base leading-relaxed">
+                            Panth Network, en iyi Minecraft sunucusudur. Özelleştirilmiş rütbe sistemleri, güçlü edit eşyalar ve doyumsuz savaş seni bekliyor.
+                        </p>
+                        <div class="pt-2 flex items-center gap-4">
+                            <button onclick="switchTab('store')" class="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-extrabold text-xs shadow-neon-purple transition-all flex items-center gap-2">
+                                <i class="fa-solid fa-store"></i> Mağazayı Keşfet
+                            </button>
+                            <button onclick="copyServerIP()" class="px-6 py-3.5 rounded-2xl glass-card hover:bg-purple-900/30 text-white font-extrabold text-xs border border-purple-500/30 transition-all flex items-center gap-2">
+                                <i class="fa-solid fa-copy text-purple-400"></i> IP Kopyala
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- HAVALI DUYURULAR -->
+                <div class="glass-panel rounded-3xl p-6 sm:p-8">
+                    <div class="flex items-center justify-between pb-6 border-b border-purple-900/30">
+                        <h2 class="text-lg font-bold font-heading text-white flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-purple-600 to-pink-600 flex items-center justify-center text-white shadow-neon-purple">
+                                <i class="fa-solid fa-bullhorn text-sm"></i>
+                            </div>
+                            Sunucu Duyuruları
+                        </h2>
+                    </div>
+                    <div class="mt-6 space-y-4" id="homeAnnouncementsList"></div>
+                </div>
+            </div>
+
+            <!-- TAB 2: MAĞAZA -->
+            <div id="tab-store" class="tab-content hidden space-y-8">
+                <div class="glass-panel rounded-3xl p-6 sm:p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                    <div>
+                        <h2 class="text-2xl font-black font-heading text-white">Sunucu Mağazası</h2>
+                        <p class="text-xs text-slate-400 mt-1">Bakiyeniz ile özel ayrıcalıklara anında sahip olun.</p>
+                    </div>
+                    <div class="flex flex-wrap gap-2.5">
+                        <button onclick="filterStore('vip')" class="store-tab active px-5 py-2.5 rounded-xl text-xs font-extrabold bg-purple-950/60 text-slate-300 transition-all">VIP Rütbeler</button>
+                        <button onclick="filterStore('keys')" class="store-tab px-5 py-2.5 rounded-xl text-xs font-extrabold bg-purple-950/60 text-slate-300 transition-all">Kasalar</button>
+                        <button onclick="filterStore('sets')" class="store-tab px-5 py-2.5 rounded-xl text-xs font-extrabold bg-purple-950/60 text-slate-300 transition-all">Edit Setler</button>
+                        <button onclick="filterStore('coins')" class="store-tab px-5 py-2.5 rounded-xl text-xs font-extrabold bg-purple-950/60 text-slate-300 transition-all">Coinler</button>
+                        <button onclick="filterStore('all')" class="store-tab px-5 py-2.5 rounded-xl text-xs font-extrabold bg-purple-950/60 text-slate-300 transition-all">Tümü</button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6" id="storeProductsGrid"></div>
+            </div>
+
+            <!-- TAB 3: GÜNCELLEMELER -->
+            <div id="tab-updates" class="tab-content hidden space-y-8">
+                <div class="glass-panel rounded-3xl p-6 sm:p-8">
+                    <h2 class="text-2xl font-black font-heading text-white mb-2">Sunucu Güncellemeleri & Yama Notları</h2>
+                    <p class="text-xs text-slate-400 mb-6">Panth Network güncellemelerini buradan inceleyin.</p>
+                    <div id="updatesContainer" class="space-y-4"></div>
+                </div>
+            </div>
+
+            <!-- TAB 4: DESTEK -->
+            <div id="tab-support" class="tab-content hidden space-y-8">
+                <div class="glass-panel rounded-3xl p-6 sm:p-8 max-w-xl">
+                    <h2 class="text-2xl font-black font-heading text-white mb-2">Destek Talebi Gönder</h2>
+                    <p class="text-xs text-slate-400 mb-6">Sorularınızı ve sorunlarınızı ekibimize iletin.</p>
+                    <form onsubmit="submitSupportTicket(event)" class="space-y-4">
+                        <input type="text" id="ticketSubjectInput" required placeholder="Konu Başlığı" class="w-full px-4.5 py-3.5 rounded-2xl bg-purple-950/50 border border-purple-800/40 text-white text-sm focus:border-purple-500 focus:outline-none">
+                        <textarea id="ticketMessageInput" rows="4" required placeholder="Mesajınız..." class="w-full px-4.5 py-3.5 rounded-2xl bg-purple-950/50 border border-purple-800/40 text-white text-sm resize-none focus:border-purple-500 focus:outline-none"></textarea>
+                        <button type="submit" class="px-7 py-3.5 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 text-white font-extrabold text-xs shadow-neon-purple transition-all">Gönder</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- TAB 5: HAKKIMIZDA -->
+            <div id="tab-about" class="tab-content hidden space-y-8">
+                <div class="glass-panel rounded-3xl p-6 sm:p-8 max-w-2xl space-y-4">
+                    <h2 class="text-2xl font-black font-heading text-white">Hakkımızda</h2>
+                    <p class="text-slate-300 text-sm leading-relaxed">
+                        Panth Network, en iyi Minecraft sunucusudur. Oyuncularımıza en iyi performansı ve eğlenceyi sunmak için geliştirilmiştir.
+                    </p>
+                </div>
+            </div>
+
+            <!-- TAB 6: YÖNETİM PANELİ -->
+            <div id="tab-admin" class="tab-content hidden space-y-8">
+                <div class="glass-panel rounded-3xl p-6 sm:p-10 border-rose-500/30">
+                    <div class="flex items-center justify-between mb-8 flex-wrap gap-4">
+                        <h2 class="text-2xl font-black font-heading text-rose-400 flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-rose-500/10 flex items-center justify-center text-rose-400">
+                                <i class="fa-solid fa-shield-halved text-base"></i>
+                            </div>
+                            Yetkili Yönetim Paneli
+                        </h2>
+                        <button onclick="unbanAllIPs()" class="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs transition-all shadow-lg flex items-center gap-2">
+                            <i class="fa-solid fa-unlock"></i> Tüm IP Banları Kaldır
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        
+                        <!-- Duyuru Yayınla & Kaldır -->
+                        <div id="adminAnnBox" class="glass-card p-6 rounded-2xl border border-purple-900/30 col-span-1 lg:col-span-2 space-y-4">
+                            <h3 class="font-bold text-white text-sm flex items-center gap-2.5">
+                                <i class="fa-solid fa-bullhorn text-purple-400"></i> Duyuru Yayınla & Yönet
+                            </h3>
+                            <form onsubmit="adminAddAnnouncement(event)" class="flex flex-col sm:flex-row gap-3">
+                                <input type="text" id="adminAnnInput" required placeholder="Yeni duyuru metnini buraya yazın..." class="flex-1 px-4.5 py-3 rounded-xl bg-purple-950/60 border border-purple-800/40 text-white text-xs">
+                                <button type="submit" class="px-6 py-3 rounded-xl bg-purple-600 text-white font-bold text-xs shrink-0">Yayınla</button>
+                            </form>
+
+                            <!-- Aktif Duyuru Listesi ve Silme Butonları -->
+                            <div class="pt-4 border-t border-purple-900/30 space-y-2">
+                                <span class="text-[11px] font-extrabold uppercase text-slate-400">Yayınlanan Duyurular</span>
+                                <div id="adminAnnouncementsList" class="space-y-2"></div>
+                            </div>
+                        </div>
+
+                        <!-- Güncelleme Ekle -->
+                        <div id="adminUpdateBox" class="glass-card p-6 rounded-2xl border border-purple-900/30">
+                            <h3 class="font-bold text-white text-sm mb-4 flex items-center gap-2.5">
+                                <i class="fa-solid fa-newspaper text-purple-400"></i> Yama / Güncelleme Ekle
+                            </h3>
+                            <form onsubmit="adminAddUpdate(event)" class="space-y-3">
+                                <input type="text" id="adminUpdateTitle" required placeholder="Başlık" class="w-full px-4.5 py-2.5 rounded-xl bg-purple-950/60 border border-purple-800/40 text-white text-xs">
+                                <textarea id="adminUpdateText" required placeholder="Detaylar..." rows="2" class="w-full px-4.5 py-2.5 rounded-xl bg-purple-950/60 border border-purple-800/40 text-white text-xs resize-none"></textarea>
+                                <button type="submit" class="px-5 py-2.5 rounded-xl bg-purple-600 text-white font-bold text-xs">Yayınla</button>
+                            </form>
+                        </div>
+
+                        <!-- Rol Değiştir -->
+                        <div id="adminRoleBox" class="glass-card p-6 rounded-2xl border border-purple-900/30">
+                            <h3 class="font-bold text-white text-sm mb-4 flex items-center gap-2.5">
+                                <i class="fa-solid fa-crown text-amber-400"></i> Oyuncu Rolü Değiştir
+                            </h3>
+                            <div class="space-y-3">
+                                <input type="text" id="adminRoleUser" placeholder="Oyuncu Adı" class="w-full px-4.5 py-2.5 rounded-xl bg-purple-950/60 border border-purple-800/40 text-white text-xs">
+                                <select id="adminRoleSelect" class="w-full px-4.5 py-2.5 rounded-xl bg-purple-950/60 border border-purple-800/40 text-white text-xs"></select>
+                                <button onclick="adminGiveRole()" class="px-5 py-2.5 rounded-xl bg-amber-500 text-slate-950 font-bold text-xs">Rolü Güncelle</button>
+                            </div>
+                        </div>
+
+                        <!-- Kredi Yükle -->
+                        <div id="adminCreditBox" class="glass-card p-6 rounded-2xl border border-purple-900/30 col-span-1 lg:col-span-2">
+                            <h3 class="font-bold text-white text-sm mb-4 flex items-center gap-2.5">
+                                <i class="fa-solid fa-wallet text-emerald-400"></i> Oyuncuya Kredi Yükle
+                            </h3>
+                            <div class="flex flex-col sm:flex-row gap-3">
+                                <input type="text" id="adminCreditUser" placeholder="Oyuncu Adı" class="flex-1 px-4.5 py-2.5 rounded-xl bg-purple-950/60 border border-purple-800/40 text-white text-xs">
+                                <input type="number" id="adminCreditAmount" placeholder="Kredi Tutarı (₺)" class="w-full sm:w-48 px-4.5 py-2.5 rounded-xl bg-purple-950/60 border border-purple-800/40 text-white text-xs">
+                                <button onclick="adminGiveCredit()" class="px-5 py-2.5 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs shrink-0">Kredi Yükle</button>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- Oyuncu Listesi & IP Ban -->
+                    <div class="mt-8 glass-card p-6 rounded-2xl border border-purple-900/30">
+                        <h3 class="font-bold text-white text-sm mb-5 flex items-center gap-2.5">
+                            <i class="fa-solid fa-users text-purple-400"></i> Kayıtlı Oyuncular & Güvenlik (IP Ban)
+                        </h3>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-xs border-collapse">
+                                <thead>
+                                    <tr class="text-slate-400 border-b border-purple-900/30">
+                                        <th class="py-3 px-4">Oyuncu</th>
+                                        <th class="py-3 px-4">Rol</th>
+                                        <th class="py-3 px-4">Kredi</th>
+                                        <th id="thPassword" class="py-3 px-4 hidden"> Şifre</th>
+                                        <th class="py-3 px-4 text-right">Eylem</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="adminUsersTable" class="divide-y divide-purple-900/20"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- MODALS -->
+    <div id="loginModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+        <div class="glass-panel w-full max-w-md rounded-3xl p-8 relative border border-purple-800/50">
+            <button onclick="closeModal('loginModal')" class="absolute top-6 right-6 text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            <h3 class="font-heading font-bold text-2xl text-white mb-6">Giriş Yap</h3>
+            <form onsubmit="handleLogin(event)" class="space-y-4">
+                <input type="text" id="loginUser" required placeholder="Kullanıcı Adı" class="w-full px-4.5 py-3.5 rounded-2xl bg-purple-950/60 border border-purple-800/40 text-white text-sm">
+                <input type="password" id="loginPass" required placeholder=" Şifre" class="w-full px-4.5 py-3.5 rounded-2xl bg-purple-950/60 border border-purple-800/40 text-white text-sm">
+                <button type="submit" class="w-full py-3.5 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 text-white font-extrabold text-sm shadow-neon-purple transition-all">Giriş Yap</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="registerModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+        <div class="glass-panel w-full max-w-md rounded-3xl p-8 relative border border-purple-800/50">
+            <button onclick="closeModal('registerModal')" class="absolute top-6 right-6 text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            <h3 class="font-heading font-bold text-2xl text-white mb-6">Kayıt Ol</h3>
+            <form onsubmit="handleRegister(event)" class="space-y-4">
+                <input type="text" id="regUser" required placeholder="Oyuncu Adınız" class="w-full px-4.5 py-3.5 rounded-2xl bg-purple-950/60 border border-purple-800/40 text-white text-sm">
+                <input type="password" id="regPass" required placeholder="Şifreniz" class="w-full px-4.5 py-3.5 rounded-2xl bg-purple-950/60 border border-purple-800/40 text-white text-sm">
+                <button type="submit" class="w-full py-3.5 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 text-white font-extrabold text-sm shadow-neon-purple transition-all">Kayıt Ol (+100 ₺ Kredi)</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const ROLES = ["Kurucu", "Admin", "Asistan", "Moderatör", "Yardımcı", "Rehber", "Oyuncu"];
+
+        let currentUser = JSON.parse(localStorage.getItem('panth_current_user')) || null;
+        let users = JSON.parse(localStorage.getItem('panth_users')) || [
+            { username: "berat123", password: "123", role: "Kurucu", balance: 99999, banned: false }
+        ];
+        
+        let bannedIPs = JSON.parse(localStorage.getItem('panth_banned_ips')) || [];
+        
+        function unbanAllIPs() {
+            localStorage.removeItem('panth_banned_ips');
+            bannedIPs = [];
+            users.forEach(u => u.banned = false);
+            if(currentUser) currentUser.banned = false;
+
+            localStorage.setItem('panth_users', JSON.stringify(users));
+            if(currentUser) localStorage.setItem('panth_current_user', JSON.stringify(currentUser));
+
+            document.getElementById('bannedScreen').style.display = 'none';
+            document.getElementById('bannedScreen').classList.remove('flex');
+            showToast("Tüm IP banlar kaldırıldı!");
+            renderAdminPanel();
+        }
+
+        let announcements = JSON.parse(localStorage.getItem('panth_announcements')) || [
+            { id: 1, text: "Panth Network Sezon 4 Açıldı! En iyi Minecraft sunucusu." }
+        ];
+        let updates = JSON.parse(localStorage.getItem('panth_updates')) || [
+            { id: 1, title: "v4.0 Büyük Sezon Güncellemesi", text: "Yeni kasanın yanısıra harita ve VIP yetkileri yenilendi." }
+        ];
+        let storeProducts = [
+            { id: 1, name: "VIP Üyelik", category: "vip", price: 50, desc: "/fly yetkisi, özel kit ve ekstra hammadde bonusu." },
+            { id: 2, name: "VIP+ Üyelik", category: "vip", price: 100, desc: "Gelişmiş hammadde çarpanı, özel tag ve VIP+ kiti." },
+            { id: 3, name: "Efsanevi Kasa Anahtarı x5", category: "keys", price: 30, desc: "Efsanevi BoxPvP kasasını açmak için 5 adet anahtar." },
+            { id: 4, name: "Edit Kılıç Seti", category: "sets", price: 75, desc: "Keskinlik X, Kırılmazlık V özel savaş seti." },
+            { id: 5, name: "500 Oyun Parası Coin", category: "coins", price: 25, desc: "Oyun içi pazarda harcayabileceğiniz 500 Coin." }
+        ];
+
+        function checkIPBan() {
+            if (bannedIPs.length > 0 || (currentUser && currentUser.banned)) {
+                document.getElementById('bannedScreen').style.display = 'flex';
+            } else {
+                document.getElementById('bannedScreen').style.display = 'none';
+            }
+        }
+        checkIPBan();
+
+        const canvas = document.getElementById('bgCanvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        let particles = Array.from({length: 35}, () => ({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            r: Math.random() * 1.5 + 0.5,
+            sx: (Math.random() - 0.5) * 0.3,
+            sy: (Math.random() - 0.5) * 0.3
+        }));
+
+        function drawParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = 'rgba(168, 85, 247, 0.35)';
+            particles.forEach(p => {
+                p.x += p.sx; p.y += p.sy;
+                if(p.x < 0 || p.x > canvas.width) p.sx *= -1;
+                if(p.y < 0 || p.y > canvas.height) p.sy *= -1;
+                ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2); ctx.fill();
+            });
+            requestAnimationFrame(drawParticles);
+        }
+        drawParticles();
+
+        function switchTab(id) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.sidebar-link').forEach(el => el.classList.remove('active'));
+
+            const target = document.getElementById('tab-' + id);
+            if(target) target.classList.remove('hidden');
+
+            const nav = document.getElementById('nav-' + id);
+            if(nav) nav.classList.add('active');
+
+            if(id === 'home') renderHome();
+            if(id === 'store') renderStore('vip');
+            if(id === 'updates') renderUpdates();
+            if(id === 'admin') renderAdminPanel();
+        }
+
+        function toggleSidebar() { document.getElementById('sidebarNav').classList.toggle('-translate-x-full'); }
+        function openModal(id) { document.getElementById(id).classList.remove('hidden'); document.getElementById(id).classList.add('flex'); }
+        function closeModal(id) { document.getElementById(id).classList.add('hidden'); document.getElementById(id).classList.remove('flex'); }
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            document.getElementById('toastMsg').innerText = msg;
+            t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 3000);
+        }
+
+        function copyServerIP() {
+            navigator.clipboard.writeText("oyna.panthnetwork.com.tr");
+            showToast("Sunucu IP kopyalandı!");
+        }
+
+        function handleLogin(e) {
+            e.preventDefault();
+            const u = document.getElementById('loginUser').value.trim();
+            const p = document.getElementById('loginPass').value.trim();
+
+            if (u === "berat123" && p === "123") {
+                currentUser = { username: "berat123", role: "Kurucu", balance: 99999, banned: false };
+            } else {
+                const found = users.find(x => x.username.toLowerCase() === u.toLowerCase() && x.password === p);
+                if (found) {
+                    if(found.banned) { showToast("Bu hesap banlanmış!"); return; }
+                    currentUser = found;
+                } else {
+                    showToast("Hatalı kullanıcı adı veya şifre!");
+                    return;
+                }
+            }
+
+            localStorage.setItem('panth_current_user', JSON.stringify(currentUser));
+            closeModal('loginModal');
+            updateUserUI();
+            showToast(`Giriş yapıldı: ${currentUser.username}`);
+        }
+
+        function handleRegister(e) {
+            e.preventDefault();
+            const u = document.getElementById('regUser').value.trim();
+            const p = document.getElementById('regPass').value.trim();
+
+            if(users.some(x => x.username.toLowerCase() === u.toLowerCase())) {
+                showToast("Bu isim zaten alınmış!"); return;
+            }
+
+            const newUser = { username: u, password: p, role: "Oyuncu", balance: 100, banned: false };
+            users.push(newUser);
+            currentUser = newUser;
+
+            localStorage.setItem('panth_users', JSON.stringify(users));
+            localStorage.setItem('panth_current_user', JSON.stringify(currentUser));
+
+            closeModal('registerModal');
+            updateUserUI();
+            showToast("Kayıt olundu ve +100 ₺ eklendi!");
+        }
+
+        function logout() {
+            currentUser = null;
+            localStorage.removeItem('panth_current_user');
+            updateUserUI();
+            switchTab('home');
+            showToast("Çıkış yapıldı.");
+        }
+
+        function updateUserUI() {
+            const area = document.getElementById('userHeaderArea');
+            const adminNav = document.getElementById('adminNavWrapper');
+
+            if(currentUser) {
+                area.innerHTML = `
+                    <div class="px-4 py-2 rounded-2xl bg-purple-950/80 border border-purple-800/40 text-xs font-extrabold text-emerald-400 flex items-center gap-1.5">
+                        <i class="fa-solid fa-wallet text-emerald-400"></i> ${currentUser.balance} ₺
+                    </div>
+                    <div class="px-4 py-2 rounded-2xl bg-purple-950/80 border border-purple-800/40 text-xs text-white flex items-center gap-2">
+                        <b>${currentUser.username}</b> <span class="text-purple-400 font-bold">(${currentUser.role})</span>
+                    </div>
+                    <button onclick="logout()" class="p-2.5 rounded-xl bg-rose-500/10 text-rose-400 hover:bg-rose-500 hover:text-white transition-all text-xs" title="Çıkış Yap">
+                        <i class="fa-solid fa-power-off"></i>
+                    </button>
+                `;
+
+                if(["Kurucu", "Admin", "Asistan", "Moderatör", "Yardımcı", "Rehber"].includes(currentUser.role)) {
+                    adminNav.classList.remove('hidden');
+                } else {
+                    adminNav.classList.add('hidden');
+                }
+            } else {
+                area.innerHTML = `
+                    <button onclick="openModal('loginModal')" class="px-5 py-2.5 rounded-xl bg-purple-950/80 text-white text-xs font-bold hover:bg-purple-900 transition-all">Giriş Yap</button>
+                    <button onclick="openModal('registerModal')" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white text-xs font-extrabold shadow-neon-purple transition-all">Kayıt Ol</button>
+                `;
+                adminNav.classList.add('hidden');
+            }
+        }
+
+        function filterStore(cat) {
+            document.querySelectorAll('.store-tab').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            renderStore(cat);
+        }
+
+        function renderStore(cat) {
+            const grid = document.getElementById('storeProductsGrid');
+            grid.innerHTML = '';
+            const filtered = cat === 'all' ? storeProducts : storeProducts.filter(p => p.category === cat);
+
+            filtered.forEach(prod => {
+                grid.innerHTML += `
+                    <div class="glass-card rounded-3xl p-6 flex flex-col justify-between border border-purple-900/30">
+                        <div>
+                            <div class="flex items-center justify-between mb-4">
+                                <span class="px-3 py-1 rounded-lg bg-purple-500/10 text-purple-300 text-[10px] uppercase font-extrabold tracking-wider">${prod.category}</span>
+                                <span class="text-emerald-400 font-extrabold text-lg">${prod.price} ₺</span>
+                            </div>
+                            <h4 class="font-bold font-heading text-white text-lg mb-2">${prod.name}</h4>
+                            <p class="text-slate-400 text-xs leading-relaxed mb-6">${prod.desc}</p>
+                        </div>
+                        <button onclick="buyProduct(${prod.id})" class="w-full py-3 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-extrabold text-xs transition-all shadow-neon-purple flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-cart-shopping"></i> Satın Al
+                        </button>
+                    </div>
+                `;
+            });
+        }
+
+        function buyProduct(id) {
+            if(!currentUser) {
+                showToast("Satın almak için giriş yapın!");
+                openModal('loginModal');
+                return;
+            }
+            const p = storeProducts.find(x => x.id === id);
+            if(currentUser.balance >= p.price) {
+                currentUser.balance -= p.price;
+                localStorage.setItem('panth_current_user', JSON.stringify(currentUser));
+                updateUserUI();
+                showToast(`${p.name} satın alındı!`);
+            } else {
+                showToast("Yetersiz bakiye!");
+            }
+        }
+
+        // DUYURU SİLME FONKSİYONU
+        function deleteAnnouncement(id) {
+            announcements = announcements.filter(a => a.id !== id);
+            localStorage.setItem('panth_announcements', JSON.stringify(announcements));
+            showToast("Duyuru kaldırıldı!");
+            renderHome();
+            renderAdminPanel();
+        }
+
+        function renderAdminPanel() {
+            if(!currentUser) return;
+            const r = currentUser.role;
+
+            document.getElementById('adminAnnBox').style.display = ["Kurucu", "Admin", "Asistan", "Moderatör", "Yardımcı"].includes(r) ? 'block' : 'none';
+            document.getElementById('adminUpdateBox').style.display = ["Kurucu", "Admin"].includes(r) ? 'block' : 'none';
+            document.getElementById('adminRoleBox').style.display = ["Kurucu", "Admin", "Asistan"].includes(r) ? 'block' : 'none';
+            document.getElementById('adminCreditBox').style.display = ["Kurucu", "Admin", "Asistan"].includes(r) ? 'block' : 'none';
+
+            // Yetkili Duyuru Yönetim Listesi
+            const annList = document.getElementById('adminAnnouncementsList');
+            annList.innerHTML = '';
+            if(announcements.length === 0) {
+                annList.innerHTML = `<span class="text-slate-500 text-xs">Henüz yayınlanmış duyuru yok.</span>`;
+            } else {
+                announcements.forEach(a => {
+                    annList.innerHTML += `
+                        <div class="p-3 rounded-xl bg-purple-950/40 border border-purple-900/30 flex items-center justify-between text-xs text-slate-300">
+                            <span class="truncate max-w-md">${a.text}</span>
+                            <button onclick="deleteAnnouncement(${a.id})" class="px-2.5 py-1 rounded-lg bg-rose-500/20 text-rose-400 hover:bg-rose-500 hover:text-white font-bold transition-all shrink-0 ml-2">
+                                <i class="fa-solid fa-trash-can"></i> Sil
+                            </button>
+                        </div>
+                    `;
+                });
+            }
+
+            const sel = document.getElementById('adminRoleSelect');
+            sel.innerHTML = '';
+            ROLES.forEach(roleName => {
+                if(r === "Asistan" && ["Kurucu", "Admin", "Asistan"].includes(roleName)) return;
+                sel.innerHTML += `<option value="${roleName}">${roleName}</option>`;
+            });
+
+            const thPass = document.getElementById('thPassword');
+            if(r === "Kurucu" || r === "Admin") thPass.classList.remove('hidden');
+            else thPass.classList.add('hidden');
+
+            const table = document.getElementById('adminUsersTable');
+            table.innerHTML = '';
+            users.forEach(u => {
+                table.innerHTML += `
+                    <tr>
+                        <td class="py-3 px-4 text-white font-bold">${u.username}</td>
+                        <td class="py-3 px-4 text-purple-400 font-bold">${u.role}</td>
+                        <td class="py-3 px-4 text-emerald-400 font-mono">${u.balance} ₺</td>
+                        ${(r === "Kurucu" || r === "Admin") ? `<td class="py-3 px-4 font-mono text-amber-300">${u.password}</td>` : ''}
+                        <td class="py-3 px-4 text-right">
+                            <button onclick="adminBanUser('${u.username}')" class="px-3 py-1.5 rounded-xl bg-rose-500/20 text-rose-400 hover:bg-rose-500 hover:text-white text-[11px] font-bold transition-colors">
+                                ${u.banned ? 'Banlı' : 'IP Ban At'}
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        function adminAddAnnouncement(e) {
+            e.preventDefault();
+            const txt = document.getElementById('adminAnnInput').value;
+            announcements.unshift({ id: Date.now(), text: txt });
+            localStorage.setItem('panth_announcements', JSON.stringify(announcements));
+            document.getElementById('adminAnnInput').value = '';
+            showToast("Duyuru yayınlandı!");
+            renderHome();
+            renderAdminPanel();
+        }
+
+        function adminAddUpdate(e) {
+            e.preventDefault();
+            const title = document.getElementById('adminUpdateTitle').value;
+            const text = document.getElementById('adminUpdateText').value;
+            updates.unshift({ id: Date.now(), title, text });
+            localStorage.setItem('panth_updates', JSON.stringify(updates));
+            document.getElementById('adminUpdateTitle').value = '';
+            document.getElementById('adminUpdateText').value = '';
+            showToast("Güncelleme eklendi!");
+            renderUpdates();
+        }
+
+        function adminGiveRole() {
+            const name = document.getElementById('adminRoleUser').value.trim();
+            const role = document.getElementById('adminRoleSelect').value;
+            const target = users.find(x => x.username.toLowerCase() === name.toLowerCase());
+
+            if(target) {
+                target.role = role;
+                localStorage.setItem('panth_users', JSON.stringify(users));
+                showToast(`${target.username} rolü ${role} yapıldı.`);
+                renderAdminPanel();
+            } else showToast("Oyuncu bulunamadı!");
+        }
+
+        function adminGiveCredit() {
+            const name = document.getElementById('adminCreditUser').value.trim();
+            const amt = parseInt(document.getElementById('adminCreditAmount').value);
+            const target = users.find(x => x.username.toLowerCase() === name.toLowerCase());
+
+            if(target && amt) {
+                target.balance += amt;
+                localStorage.setItem('panth_users', JSON.stringify(users));
+                showToast(`${target.username} hesabına ${amt} ₺ eklendi.`);
+                renderAdminPanel();
+            } else showToast("Hatalı bilgi!");
+        }
+
+        function adminBanUser(username) {
+            const target = users.find(x => x.username === username);
+            if(target) {
+                target.banned = true;
+                bannedIPs.push("BANNED_USER");
+                localStorage.setItem('panth_users', JSON.stringify(users));
+                localStorage.setItem('panth_banned_ips', JSON.stringify(bannedIPs));
+                showToast(`${username} IP banlandı!`);
+                renderAdminPanel();
+                checkIPBan();
+            }
+        }
+
+        // HAVALI VE MODERN DUYURU RENDER'I
+        function renderHome() {
+            const list = document.getElementById('homeAnnouncementsList');
+            list.innerHTML = '';
+            if(announcements.length === 0) {
+                list.innerHTML = `<div class="text-slate-500 text-xs text-center py-4">Sistemde yayınlanmış duyuru bulunmuyor.</div>`;
+                return;
+            }
+            announcements.forEach(a => {
+                list.innerHTML += `
+                    <div class="relative overflow-hidden p-5 rounded-2xl glass-card border border-purple-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 group hover:border-purple-500/50 transition-all">
+                        <div class="absolute left-0 top-0 bottom-0 w-1.5 bg-gradient-to-b from-purple-500 to-pink-500 rounded-l-2xl"></div>
+                        <div class="flex items-center gap-4 pl-2">
+                            <div class="w-11 h-11 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 shrink-0 group-hover:scale-110 group-hover:text-pink-400 transition-all">
+                                <i class="fa-solid fa-bullhorn text-base"></i>
+                            </div>
+                            <div class="space-y-1">
+                                <div class="flex items-center gap-2">
+                                    <span class="px-2.5 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/30 text-purple-300 text-[10px] font-extrabold uppercase tracking-wider">Sistem</span>
+                                    <span class="text-[10px] text-slate-500 font-medium">Panth Network Bot</span>
+                                </div>
+                                <p class="text-xs sm:text-sm text-slate-200 font-semibold leading-relaxed">${a.text}</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function renderUpdates() {
+            const cont = document.getElementById('updatesContainer');
+            cont.innerHTML = '';
+            updates.forEach(u => {
+                cont.innerHTML += `
+                    <div class="glass-card p-6 rounded-2xl border border-purple-900/30 space-y-2">
+                        <h4 class="font-bold text-purple-300 text-base">${u.title}</h4>
+                        <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">${u.text}</p>
+                    </div>
+                `;
+            });
+        }
+
+        updateUserUI();
+        renderHome();
+        renderStore('vip');
+    </script>
+</body>
+</html>
